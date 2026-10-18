@@ -60,7 +60,7 @@ function referenceText(refs){return refs.map((r,i)=>`参考图${i+1}：${asset(r
 function baseExpand(role,s=state){
   const dict={角色:role.name||'未命名角色',特征:[role.feature,role.proposal?'原创建议：'+role.proposal:''].filter(Boolean).join('；')||'未指定',
     姿态:poseText(role,s),
-    画风:role.seriesStyle||s.style||'遵循此任务绑定的画风参考图',背景:state.brief||'未指定',类型要求:outputRule(s)};
+    画风:role.seriesStyle||s.style||(refsForRole(role,state.refs,s).some(r=>r.role==='画风')?'遵循此任务绑定的画风参考图':'根据角色设定与文字要求确定绘画表现，保持一致的线条、色彩和材质'),背景:state.brief||'未指定',类型要求:outputRule(s)};
   const core=state.template.replace(/\{([^{}]+)\}/g,(m,k)=>dict[k]??m),refs=refsForRole(role);
   return core+(designText(role)?'\n\n角色设计约束：'+designText(role):'')+(refs.length?'\n\n参考图使用范围：\n'+referenceText(refs)+'\n画风参考只取线条、配色、材质与光照，不复制其角色身份；角色参考保留身份与造型；构图参考只取布局；姿态参考只取动作与受力，不复制身份；材质参考只取表面质感。':'');
 }
@@ -70,7 +70,6 @@ function baseProductionIssues(roles=selectedRoles()){
   if(!roles.length)out.push({step:'background-results',text:'选择至少一个角色加入本批任务'});
   if(new Set(roles.map(r=>r.name.trim())).size!==roles.length)out.push({step:'background-results',text:'为重复名称的角色设置不同名字'});
   if(roles.some(r=>!r.feature.trim()))out.push({step:'background-results',text:'补充每个角色的识别特征'});
-  if(!state.style.trim()&&roles.some(role=>!refsForRole(role).some(r=>r.role==='画风')))out.push({step:'refs',text:'填写统一画风，或为每个角色绑定画风参考'});
   if(templateErrors())out.push({step:'template',text:templateErrors()});
   return out;
 }
@@ -91,6 +90,7 @@ function baseTemplatePanel(){
   </div>
   <details class="spec-layout-details"><summary>布局示意与细节</summary><div class="preset-overview">${layoutPreview(spec)}<div><h3>${spec.name}模板</h3><p>${spec.purpose}</p><p class="small muted">${spec.w} × ${spec.h}<br>${spec.summary.join(' · ')}</p><span class="small muted">布局示意，非出图结果</span></div></div></details>
   ${promptReferences(role)}
+  <label class="field"><span>画风描述（可选）</span><textarea class="compact-input" data-state="style" maxlength="2000" placeholder="例如：水墨晕染、低饱和配色、平涂插画；留空按角色设定生成">${esc(state.style)}</textarea></label>
 
   <div class="row"><h3>完整提示词</h3><span class="space"></span><button class="text-action" data-action="copy-prompt" ${role?'':'disabled'}>${icon('copy')}复制</button></div>
   <pre class="prompt-preview" data-live-prompt>${role?esc(expand(role,state)):'先在设计背景中确认角色，提示词会自动填入。'}</pre>
