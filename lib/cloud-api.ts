@@ -1,4 +1,5 @@
 import prompts from './prompts.json';
+import { pagesOrigin } from './browser-access';
 type Data = Record<string, any>;
 export class ApiError extends Error { constructor(message:string, public status=400, public details:Data={}) { super(message); } }
 export const text=(v:unknown,n=3000)=>String(v??'').slice(0,n);
@@ -6,7 +7,7 @@ export const json=(value:unknown,status=200,headers:HeadersInit={})=>Response.js
 export async function hash(value:string) { const a=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value));return Array.from(new Uint8Array(a),x=>x.toString(16).padStart(2,'0')).join(''); }
 async function sign(value:string,key:string) { const k=await crypto.subtle.importKey('raw',new TextEncoder().encode(key),{name:'HMAC',hash:'SHA-256'},false,['sign']);return Array.from(new Uint8Array(await crypto.subtle.sign('HMAC',k,new TextEncoder().encode(value))),x=>x.toString(16).padStart(2,'0')).join(''); }
 export async function session(request:Request,env:Cloudflare.Env,allowExpired=false) {
- const token=(request.headers.get('Cookie')||'').split(';').map(x=>x.trim()).find(x=>x.startsWith('zaoxing_session='))?.slice(16)||'';
+ const token=request.headers.get('X-Zaoxing-Session')||(request.headers.get('Cookie')||'').split(';').map(x=>x.trim()).find(x=>x.startsWith('zaoxing_session='))?.slice(16)||'';
  const [id,expires,signature]=token.split('.');
  if(!env.SESSION_SECRET||!id||!expires||!Number.isFinite(Number(expires))||(!allowExpired&&Number(expires)<Date.now())||Number(expires)>Date.now()+86401000)return null;
  if(!/^[a-f0-9-]{36}$/.test(id)||signature!==await sign(id+'.'+expires,env.SESSION_SECRET))return null;
@@ -17,7 +18,9 @@ export async function login(request:Request,env:Cloudflare.Env,data:Data) {
  await limit(env,'login:'+await hash(request.headers.get('CF-Connecting-IP')||'unknown'),10,600000);
  if(await hash(text(data.password,200))!==await hash(env.ACCESS_PASSWORD))throw new ApiError('访问口令不正确，请向项目作者索取。',401);
  const id=await session(request,env,true)||crypto.randomUUID(),expires=String(Date.now()+86400000),payload=id+'.'+expires;
- return json({ok:true},200,{'Set-Cookie':`zaoxing_session=${payload}.${await sign(payload,env.SESSION_SECRET)}; HttpOnly; SameSite=Strict; Path=/; Max-Age=31536000${new URL(request.url).protocol==='https:'?'; Secure':''}`});
+ const token=`${payload}.${await sign(payload,env.SESSION_SECRET)}`;
+ if(request.headers.get('Origin')===pagesOrigin)return json({ok:true,sessionToken:token});
+ return json({ok:true},200,{'Set-Cookie':`zaoxing_session=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=31536000${new URL(request.url).protocol==='https:'?'; Secure':''}`});
 }
 export async function limit(env:Cloudflare.Env,kind:string,max:number,period=86400000) {
  if(!env.DB)throw new ApiError('任务存储暂不可用。',503);

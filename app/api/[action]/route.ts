@@ -1,14 +1,18 @@
 import { env } from 'cloudflare:workers';
 import { ApiError, json, session, login, intelligence, limit, generate, imageTask } from '../../../lib/cloud-api';
+import { allowedOrigin, browserResponse, preflight } from '../../../lib/browser-access';
 export const dynamic='force-dynamic';
-export async function GET(request:Request) {
+export function OPTIONS(request:Request) { return preflight(request); }
+export async function GET(request:Request) { return browserResponse(request,await get(request)); }
+export async function POST(request:Request) { return browserResponse(request,await post(request)); }
+async function get(request:Request) {
  if(new URL(request.url).pathname!=='/api/status')return json({error:'接口不存在。'},404);
  const owner=await session(request,env);
  return json({hosted:true,authenticated:!!owner,configured:!!owner&&!!env.DEEPSEEK_API_KEY,imageConfigured:!!owner&&!!env.ARK_API_KEY,watermark:true,imageModel:env.SEEDREAM_MODEL||'doubao-seedream-5-0-pro-260628'});
 }
-export async function POST(request:Request) {
+async function post(request:Request) {
  try {
-  if(request.headers.get('Origin')!==new URL(request.url).origin)throw new ApiError('仅允许本站发起请求。',403);
+  if(!allowedOrigin(request))throw new ApiError('仅允许工作台网页发起请求。',403);
   if(!request.headers.get('Content-Type')?.startsWith('application/json'))throw new ApiError('请求格式错误。',415);
   const action=new URL(request.url).pathname.split('/').pop()!;
   const known=['login','logout','research','series-plan','reference','audit','generate-image','image-task'];

@@ -2,8 +2,9 @@
 
 从一个有设计依据的角色，扩展为同画风、不同身份的一组角色。
 
-- 在线工作台：https://zaoxing-workbench.urnotccw1.chatgpt.site
-- 项目分析 PDF：`public/project-analysis.pdf`（网页右上角也可直接查看）
+- GitHub Pages 工作台：https://urnotccw.github.io/zaoxing-workbench/
+- 项目分析 PDF：https://urnotccw.github.io/zaoxing-workbench/project-analysis.pdf
+- 备用工作台：https://zaoxing-workbench.urnotccw1.chatgpt.site
 - 本机原版：`local/`，Windows 安装 Python 3 后运行启动脚本。
 
 ## 项目特色
@@ -15,7 +16,13 @@
 
 ## 在线版
 
-前端沿用原工作台交互；云端使用 Vinext + Cloudflare Workers、D1 任务记录和 R2 图片存储，通过 Sites 发布。项目内容保存在用户当前浏览器中，请主动导出备份。在线版与本机版的项目不自动同步，可通过导出和导入迁移。
+前端沿用原工作台交互，静态工作台与 PDF 通过 GitHub Pages 发布；AI 后端使用 Vinext + Cloudflare Workers、D1 任务记录和 R2 图片存储，通过 Sites 发布。GitHub Pages 页面直接调用受口令保护的后端，不跳转、不在前端保存模型密钥。
+
+项目内容保存在用户当前浏览器、当前网站中，请主动导出备份。GitHub Pages、备用站与本机版的项目不自动同步，可通过导出和导入迁移。
+
+### GitHub Pages 发布
+
+在仓库 Settings → Pages 中选择 **Deploy from a branch**，分支 **main**，目录 **/docs**，保存后 GitHub 自动发布。`docs/` 是可独立托管的完整工作台和 PDF。更新前端后运行 `node scripts/build-pages.mjs` 并提交 `docs/`。AI 后端变更需要另行发布到 Sites。
 
 公开网页与 PDF 无需口令；AI 功能需要作者单独提供的访问口令，有效期 24 小时。当前全站每日限 40 次图片提交与 200 次分析调用。请求失败或状态不确定时，不自动重复付费提交。
 
